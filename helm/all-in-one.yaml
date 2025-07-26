@@ -1,0 +1,250 @@
+# Chart.yaml
+apiVersion: v2
+name: ollama-stack
+description: A Helm chart for Ollama and OpenWebUI with Tailscale
+type: application
+version: 0.1.0
+appVersion: "latest"
+
+---
+# values.yaml
+global:
+  namespace: ollama-stack
+
+ollama:
+  image:
+    repository: ollama/ollama
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  resources:
+    requests:
+      memory: "8Gi"
+      cpu: "2000m"
+    limits:
+      memory: "48Gi"
+      cpu: "10000m"
+  
+  persistence:
+    enabled: true
+    size: 200Gi
+    storageClass: ""
+
+openwebui:
+  image:
+    repository: ghcr.io/open-webui/open-webui
+    tag: main
+    pullPolicy: IfNotPresent
+  
+  auth:
+    enabled: false
+  
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "4Gi"
+      cpu: "2000m"
+  
+  persistence:
+    enabled: true
+    size: 50Gi
+    storageClass: ""
+
+networking:
+  metallb:
+    enabled: true
+    ip: "192.168.1.100"
+  
+  tailscale:
+    enabled: true
+    hostname: "ollama-webui"
+    tags: "tag:homelab"
+    authKeySecret: "tailscale-auth"
+
+---
+# templates/namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.global.namespace }}
+
+---
+# templates/ollama-pvc.yaml
+{{- if .Values.ollama.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-pvc
+  namespace: {{ .Values.global.namespace }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.ollama.persistence.size }}
+  {{- if .Values.ollama.persistence.storageClass }}
+  storageClassName: {{ .Values.ollama.persistence.storageClass }}
+  {{- end }}
+{{- end }}
+
+---
+# templates/openwebui-pvc.yaml
+{{- if .Values.openwebui.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: open-webui-data-pvc
+  namespace: {{ .Values.global.namespace }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.openwebui.persistence.size }}
+  {{- if .Values.openwebui.persistence.storageClass }}
+  storageClassName: {{ .Values.openwebui.persistence.storageClass }}
+  {{- end }}
+{{- end }}
+
+---
+# templates/ollama-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  namespace: {{ .Values.global.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      containers:
+      - name: ollama
+        image: {{ .Values.ollama.image.repository }}:{{ .Values.ollama.image.tag }}
+        imagePullPolicy: {{ .Values.ollama.image.pullPolicy }}
+        ports:
+        - containerPort: 11434
+        resources:
+          {{- toYaml .Values.ollama.resources | nindent 10 }}
+        volumeMounts:
+        - name: ollama-storage
+          mountPath: /root/.ollama
+        env:
+        - name: OLLAMA_HOST
+          value: "0.0.0.0"
+      volumes:
+      - name: ollama-storage
+        {{- if .Values.ollama.persistence.enabled }}
+        persistentVolumeClaim:
+          claimName: ollama-pvc
+        {{- else }}
+        emptyDir: {}
+        {{- end }}
+
+---
+# templates/ollama-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama-service
+  namespace: {{ .Values.global.namespace }}
+spec:
+  selector:
+    app: ollama
+  ports:
+    - protocol: TCP
+      port: 11434
+      targetPort: 11434
+
+---
+# templates/openwebui-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: open-webui
+  namespace: {{ .Values.global.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: open-webui
+  template:
+    metadata:
+      labels:
+        app: open-webui
+    spec:
+      containers:
+      - name: open-webui
+        image: {{ .Values.openwebui.image.repository }}:{{ .Values.openwebui.image.tag }}
+        imagePullPolicy: {{ .Values.openwebui.image.pullPolicy }}
+        ports:
+        - containerPort: 8080
+        env:
+        - name: OLLAMA_BASE_URL
+          value: "http://ollama-service.{{ .Values.global.namespace }}.svc.cluster.local:11434"
+        - name: WEBUI_AUTH
+          value: {{ .Values.openwebui.auth.enabled | quote }}
+        resources:
+          {{- toYaml .Values.openwebui.resources | nindent 10 }}
+        volumeMounts:
+        - name: open-webui-data
+          mountPath: /app/backend/data
+      volumes:
+      - name: open-webui-data
+        {{- if .Values.openwebui.persistence.enabled }}
+        persistentVolumeClaim:
+          claimName: open-webui-data-pvc
+        {{- else }}
+        emptyDir: {}
+        {{- end }}
+
+---
+# templates/openwebui-service-local.yaml
+{{- if .Values.networking.metallb.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: open-webui-service-local
+  namespace: {{ .Values.global.namespace }}
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: {{ .Values.networking.metallb.ip }}
+spec:
+  type: LoadBalancer
+  selector:
+    app: open-webui
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+{{- end }}
+
+---
+# templates/openwebui-service-tailscale.yaml
+{{- if .Values.networking.tailscale.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: open-webui-tailscale
+  namespace: {{ .Values.global.namespace }}
+  annotations:
+    tailscale.com/expose: "true"
+    tailscale.com/hostname: {{ .Values.networking.tailscale.hostname }}
+    tailscale.com/tags: {{ .Values.networking.tailscale.tags }}
+spec:
+  type: LoadBalancer
+  loadBalancerClass: tailscale
+  selector:
+    app: open-webui
+  ports:
+    - protocol: TCP
+      port: 443
+      targetPort: 8080
+      name: https
+{{- end }}

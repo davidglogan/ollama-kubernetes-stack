@@ -1,0 +1,20 @@
+# open-webui-service-tailscale.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: open-webui-tailscale
+  namespace: ollama-stack
+  annotations:
+    tailscale.com/expose: "true"
+    tailscale.com/hostname: "ollama-webui"
+    tailscale.com/tags: "tag:homelab"
+spec:
+  type: LoadBalancer
+  loadBalancerClass: tailscale
+  selector:
+    app: open-webui
+  ports:
+    - protocol: TCP
+      port: 443
+      name: https
+      targetPort: 8080

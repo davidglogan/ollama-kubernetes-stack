@@ -1,0 +1,66 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  helm-lint:
+    name: Helm Chart Validation
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    
+    - name: Set up Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: '3.12.0'
+    
+    - name: Lint Helm Charts
+      run: |
+        helm lint charts/ollama-stack
+        echo "✅ Helm chart validation passed"
+    
+    - name: Template Validation
+      run: |
+        helm template ollama-test charts/ollama-stack --dry-run
+        echo "✅ Template rendering successful"
+
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    
+    - name: Run Trivy Security Scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Security Results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  documentation:
+    name: Documentation Check
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    
+    - name: Check Documentation
+      run: |
+        # Check that key documentation files exist
+        test -f README.md || { echo "❌ README.md missing"; exit 1; }
+        test -f CHANGELOG.md || { echo "❌ CHANGELOG.md missing"; exit 1; }
+        test -d docs/ || { echo "❌ docs/ directory missing"; exit 1; }
+        echo "✅ Documentation structure validated"

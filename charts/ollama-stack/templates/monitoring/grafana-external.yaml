@@ -1,0 +1,22 @@
+{{- if .Values.monitoring.grafana.externalAccess.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.monitoring.grafana.externalAccess.serviceName }}
+  namespace: {{ .Values.monitoring.grafana.externalAccess.namespace }}
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: {{ .Values.networking.services.grafana.ip }}
+  labels:
+    {{- include "ollama-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/name: grafana-external
+spec:
+  type: LoadBalancer
+  selector:
+    {{- toYaml .Values.monitoring.grafana.selector.labels | nindent 4 }}
+  ports:
+    - protocol: TCP
+      port: {{ .Values.networking.services.grafana.port }}
+      targetPort: 3000
+      name: http
+{{- end }}
+

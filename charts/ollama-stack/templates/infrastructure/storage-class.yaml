@@ -1,0 +1,17 @@
+{{- if .Values.infrastructure.storage.customClass.enabled }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.infrastructure.storage.customClass.name }}
+  {{- if .Values.infrastructure.storage.customClass.setAsDefault }}
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+  {{- end }}
+  labels:
+    {{- include "ollama-stack.labels" . | nindent 4 }}
+provisioner: microk8s.io/hostpath
+parameters:
+  pvDir: {{ .Values.infrastructure.storage.customClass.path }}
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: {{ .Values.infrastructure.storage.customClass.reclaimPolicy }}
+{{- end }}

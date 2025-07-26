@@ -1,0 +1,129 @@
+# ollama-stack-tailscale.yaml
+# Deploys Ollama, Open WebUI, and a Tailscale sidecar for secure remote access.
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      containers:
+      - name: ollama
+        image: ollama/ollama:latest
+        ports:
+        - containerPort: 11434
+        volumeMounts:
+        - name: ollama-storage
+          mountPath: /root/.ollama
+      volumes:
+      - name: ollama-storage
+        persistentVolumeClaim:
+          claimName: ollama-pvc
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama-service
+spec:
+  selector:
+    app: ollama
+  ports:
+    - protocol: TCP
+      port: 11434
+      targetPort: 11434
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: open-webui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: open-webui
+  template:
+    metadata:
+      labels:
+        app: open-webui
+    spec:
+      volumes:
+      # Shared volume for the tailscale socket
+      - name: tailscale-socket
+        emptyDir: {}
+      containers:
+      # The main Open WebUI container
+      - name: open-webui
+        image: ghcr.io/open-webui/open-webui:main
+        ports:
+        - containerPort: 8080
+        env:
+        - name: OLLAMA_BASE_URL
+          value: "http://ollama-service:11434"
+        volumeMounts:
+        - name: tailscale-socket
+          mountPath: /var/run/tailscale
+      # The Tailscale sidecar container
+      - name: tailscale
+        image: tailscale/tailscale:latest
+        env:
+        # Get the auth key from the Kubernetes secret we will create
+        - name: TS_AUTHKEY
+          valueFrom:
+            secretKeyRef:
+              name: tailscale-auth
+              key: TS_AUTHKEY
+        - name: TS_HOSTNAME
+          value: "open-webui" # Sets the machine name in your tailnet
+        - name: TS_EXTRA_ARGS
+          value: --advertise-tags=tag:homelab # Optional: adds a tag for ACLs
+        - name: TS_SOCKET
+          value: /var/run/tailscale/tailscaled.sock
+        volumeMounts:
+        - name: tailscale-socket
+          mountPath: /var/run/tailscale
+        securityContext:
+          # Required to allow Tailscale to modify network settings
+          capabilities:
+            add: ["NET_ADMIN", "NET_RAW"]
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: open-webui-service
+spec:
+  type: LoadBalancer
+  # This tells Minikube's load balancer to bind to this specific host IP
+  loadBalancerIP: 192.168.1.99
+  selector:
+    app: open-webui
+  ports:
+    - protocol: TCP
+      port: 30258
+      targetPort: 8080

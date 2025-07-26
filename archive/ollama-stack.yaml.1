@@ -1,0 +1,110 @@
+# ollama-stack.yaml
+# This manifest deploys Ollama with persistent storage and Open WebUI.
+
+# --- Persistent Volume Claim for Ollama Models ---
+# This creates a persistent storage volume to ensure your downloaded models
+# are not lost if the Ollama pod is restarted or recreated.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce # This is standard for a single pod accessing the volume
+  resources:
+    requests:
+      storage: 100Gi # Adjust size as needed for your models
+
+---
+
+# --- Ollama Deployment ---
+# This runs the Ollama server itself.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      containers:
+      - name: ollama
+        image: ollama/ollama:latest
+        ports:
+        - containerPort: 11434
+        volumeMounts:
+        - name: ollama-storage
+          mountPath: /root/.ollama # Ollama stores its models here
+      volumes:
+      - name: ollama-storage
+        persistentVolumeClaim:
+          claimName: ollama-pvc
+
+---
+
+# --- Ollama Service ---
+# This exposes the Ollama deployment inside the Kubernetes cluster
+# so that Open WebUI can connect to it.
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama-service
+spec:
+  selector:
+    app: ollama
+  ports:
+    - protocol: TCP
+      port: 11434
+      targetPort: 11434
+
+---
+
+# --- Open WebUI Deployment ---
+# This runs the web interface.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: open-webui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: open-webui
+  template:
+    metadata:
+      labels:
+        app: open-webui
+    spec:
+      containers:
+      - name: open-webui
+        image: ghcr.io/open-webui/open-webui:main
+        ports:
+        - containerPort: 8080
+        env:
+        - name: OLLAMA_BASE_URL
+          value: "http://ollama-service:11434" # Connects to the Ollama service
+        - name: WEBUI_SECRET_KEY
+          value: "change-this-to-a-long-random-string" # Optional: for session security
+
+---
+
+# --- Open WebUI Service ---
+# This exposes the web interface to the outside world using a NodePort.
+apiVersion: v1
+kind: Service
+metadata:
+  name: open-webui-service
+spec:
+  type: NodePort # Easiest way to expose a service in Minikube
+  selector:
+    app: open-webui
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080

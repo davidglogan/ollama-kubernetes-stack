@@ -1,0 +1,17 @@
+# open-webui-service-local.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: open-webui-service-local
+  namespace: ollama-stack
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: 192.168.1.100
+spec:
+  type: LoadBalancer
+  selector:
+    app: open-webui
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+

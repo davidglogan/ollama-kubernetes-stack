@@ -1,0 +1,20 @@
+apiVersion: v2
+name: ollama-stack
+description: Complete Ollama AI Infrastructure with Monitoring
+type: application
+version: 2.0.0
+appVersion: "latest"
+keywords:
+  - ai
+  - llm
+  - ollama
+  - kubernetes
+  - monitoring
+home: https://github.com/dlogan/ollama-k8s-stack
+sources:
+  - https://github.com/ollama/ollama
+  - https://github.com/open-webui/open-webui
+maintainers:
+  - name: dlogan
+    email: dlogan@example.com
+dependencies: []

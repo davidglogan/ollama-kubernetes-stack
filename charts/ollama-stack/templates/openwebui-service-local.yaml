@@ -1,0 +1,22 @@
+{{- if and .Values.openwebui.enabled .Values.networking.metallb.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: open-webui-service-local
+  namespace: {{ .Values.global.namespace }}
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: {{ .Values.networking.services.openwebui.ip }}
+  labels:
+    {{- include "ollama-stack.labels" . | nindent 4 }}
+    app: open-webui
+spec:
+  type: LoadBalancer
+  selector:
+    {{- include "ollama-stack.selectorLabels" . | nindent 4 }}
+    app: open-webui
+  ports:
+    - protocol: TCP
+      port: {{ .Values.networking.services.openwebui.port }}
+      targetPort: 8080
+      name: http
+{{- end }}

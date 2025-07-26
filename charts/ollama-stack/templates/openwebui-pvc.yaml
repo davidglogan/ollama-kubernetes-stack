@@ -1,0 +1,17 @@
+{{- if and .Values.openwebui.enabled .Values.openwebui.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: open-webui-data-pvc
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "ollama-stack.labels" . | nindent 4 }}
+    app: open-webui
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.openwebui.persistence.size }}
+  storageClassName: {{ .Values.openwebui.persistence.storageClass }}
+{{- end }}

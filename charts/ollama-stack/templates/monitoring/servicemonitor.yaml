@@ -1,0 +1,20 @@
+{{- if .Values.monitoring.prometheus.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "ollama-stack.fullname" . }}-monitor
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "ollama-stack.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "ollama-stack.selectorLabels" . | nindent 6 }}
+      app: ollama
+  endpoints:
+  {{- range .Values.monitoring.prometheus.serviceMonitor.endpoints }}
+  - port: {{ .port }}
+    interval: {{ .interval }}
+    path: {{ .path }}
+  {{- end }}
+{{- end }}

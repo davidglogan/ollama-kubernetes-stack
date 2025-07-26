@@ -1,0 +1,246 @@
+# .github/workflows/deploy.yml
+name: Deploy Ollama Stack
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  CLUSTER_NAME: home-k8s
+  NAMESPACE: ollama-stack
+
+jobs:
+  deploy:
+    runs-on: self-hosted  # You'll need to set up a self-hosted runner
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'latest'
+
+    - name: Setup Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: 'latest'
+
+    - name: Verify cluster access
+      run: |
+        microk8s kubectl cluster-info
+        microk8s kubectl get nodes
+
+    - name: Install Tailscale Operator
+      run: |
+        microk8s kubectl apply -f https://github.com/tailscale/tailscale/releases/latest/download/tailscale-operator.yaml
+        microk8s kubectl wait --for=condition=available --timeout=300s deployment/operator -n tailscale-system
+
+    - name: Create namespace
+      run: |
+        microk8s kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml | microk8s kubectl apply -f -
+
+    - name: Create Tailscale secret
+      run: |
+        microk8s kubectl create secret generic tailscale-auth \
+          --from-literal=TS_AUTHKEY="${{ secrets.TAILSCALE_AUTH_KEY }}" \
+          --namespace=${{ env.NAMESPACE }} \
+          --dry-run=client -o yaml | microk8s kubectl apply -f -
+
+    - name: Deploy with Helm
+      run: |
+        helm upgrade --install ollama-stack ./helm/ollama-stack \
+          --namespace ${{ env.NAMESPACE }} \
+          --create-namespace \
+          --values ./helm/ollama-stack/values.yaml
+
+    - name: Wait for deployment
+      run: |
+        microk8s kubectl wait --for=condition=available --timeout=600s deployment/ollama -n ${{ env.NAMESPACE }}
+        microk8s kubectl wait --for=condition=available --timeout=300s deployment/open-webui -n ${{ env.NAMESPACE }}
+
+    - name: Get service info
+      run: |
+        echo "Local access:"
+        microk8s kubectl get svc -n ${{ env.NAMESPACE }} open-webui-service-local
+        echo "Tailscale access:"
+        microk8s kubectl get svc -n ${{ env.NAMESPACE }} open-webui-tailscale
+
+---
+# terraform/main.tf (Optional Terraform setup)
+terraform {
+  required_providers {
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.23"
+    }
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 2.11"
+    }
+  }
+}
+
+provider "kubernetes" {
+  config_path = "~/.kube/config"
+}
+
+provider "helm" {
+  kubernetes {
+    config_path = "~/.kube/config"
+  }
+}
+
+# Tailscale Operator
+resource "kubernetes_manifest" "tailscale_operator" {
+  manifest = yamldecode(file("https://github.com/tailscale/tailscale/releases/latest/download/tailscale-operator.yaml"))
+}
+
+# Namespace
+resource "kubernetes_namespace" "ollama_stack" {
+  metadata {
+    name = "ollama-stack"
+  }
+}
+
+# Tailscale Secret
+resource "kubernetes_secret" "tailscale_auth" {
+  metadata {
+    name      = "tailscale-auth"
+    namespace = kubernetes_namespace.ollama_stack.metadata[0].name
+  }
+  
+  data = {
+    TS_AUTHKEY = var.tailscale_auth_key
+  }
+}
+
+# Helm Release
+resource "helm_release" "ollama_stack" {
+  name       = "ollama-stack"
+  namespace  = kubernetes_namespace.ollama_stack.metadata[0].name
+  chart      = "./helm/ollama-stack"
+  
+  values = [
+    file("./helm/ollama-stack/values.yaml")
+  ]
+  
+  depends_on = [
+    kubernetes_secret.tailscale_auth
+  ]
+}
+
+variable "tailscale_auth_key" {
+  description = "Tailscale auth key"
+  type        = string
+  sensitive   = true
+}
+
+---
+# README.md
+# Ollama Stack with Tailscale
+
+This repository contains Infrastructure as Code (IaC) for deploying Ollama and OpenWebUI on Kubernetes with Tailscale for remote access.
+
+## Prerequisites
+
+- MicroK8s cluster with MetalLB enabled
+- Tailscale account with auth key
+- kubectl/microk8s access
+
+## Quick Start
+
+### Option 1: Using Kubernetes Manifests
+
+1. Set your Tailscale auth key:
+   ```bash
+   export TAILSCALE_AUTH_KEY="your-auth-key-here"
+   ```
+
+2. Run the setup script:
+   ```bash
+   chmod +x setup.sh
+   ./setup.sh
+   ```
+
+### Option 2: Using Helm
+
+1. Install Tailscale Operator:
+   ```bash
+   microk8s kubectl apply -f https://github.com/tailscale/tailscale/releases/latest/download/tailscale-operator.yaml
+   ```
+
+2. Create secret:
+   ```bash
+   microk8s kubectl create secret generic tailscale-auth \
+     --from-literal=TS_AUTHKEY="your-auth-key" \
+     --namespace=ollama-stack
+   ```
+
+3. Deploy with Helm:
+   ```bash
+   helm install ollama-stack ./helm/ollama-stack --create-namespace --namespace ollama-stack
+   ```
+
+### Option 3: Using Terraform
+
+1. Initialize Terraform:
+   ```bash
+   cd terraform
+   terraform init
+   ```
+
+2. Apply configuration:
+   ```bash
+   terraform apply -var="tailscale_auth_key=your-auth-key"
+   ```
+
+## Access
+
+- **Local**: http://192.168.1.100:8080
+- **Tailscale**: Check your Tailscale admin panel for the `ollama-webui` device
+
+## GitHub Actions Setup
+
+1. Add `TAILSCALE_AUTH_KEY` to your repository secrets
+2. Set up a self-hosted GitHub Actions runner on your cluster
+3. Push to main branch to trigger deployment
+
+## Directory Structure
+
+```
+├── .github/workflows/
+│   └── deploy.yml
+├── helm/
+│   └── ollama-stack/
+│       ├── Chart.yaml
+│       ├── values.yaml
+│       └── templates/
+├── terraform/
+│   └── main.tf
+├── manifests/
+│   └── ollama-manifests.yaml
+├── setup.sh
+└── README.md
+```
+
+## Troubleshooting
+
+Check pod status:
+```bash
+microk8s kubectl get pods -n ollama-stack
+```
+
+View logs:
+```bash
+microk8s kubectl logs -n ollama-stack deployment/open-webui
+```
+
+Check Tailscale operator:
+```bash
+microk8s kubectl logs -n tailscale-system deployment/operator
+```

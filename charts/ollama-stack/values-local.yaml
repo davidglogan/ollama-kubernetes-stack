@@ -1,0 +1,50 @@
+global:
+  namespace: ollama-stack
+
+ollama:
+  image:
+    repository: ollama/ollama
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  resources:
+    requests:
+      memory: "8Gi"
+      cpu: "2000m"
+    limits:
+      memory: "48Gi"
+      cpu: "10000m"
+  
+  persistence:
+    enabled: true
+    size: 1Ti
+    storageClass: "evo4t-storage"
+
+openwebui:
+  image:
+    repository: ghcr.io/open-webui/open-webui
+    tag: main
+    pullPolicy: IfNotPresent
+  
+  auth:
+    enabled: true  # Enable authentication
+  
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "4Gi"
+      cpu: "2000m"
+  
+  persistence:
+    enabled: true
+    size: 50Gi
+    storageClass: "evo4t-storage"
+
+networking:
+  metallb:
+    enabled: true
+    ip: "192.168.1.101"
+  tailscale:
+    enabled: false

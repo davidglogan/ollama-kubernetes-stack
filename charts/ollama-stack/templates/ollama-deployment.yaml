@@ -1,0 +1,74 @@
+{{- if .Values.ollama.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "ollama-stack.labels" . | nindent 4 }}
+    app: ollama
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "ollama-stack.selectorLabels" . | nindent 6 }}
+      app: ollama
+  template:
+    metadata:
+      labels:
+        {{- include "ollama-stack.selectorLabels" . | nindent 8 }}
+        app: ollama
+    spec:
+      terminationGracePeriodSeconds: {{ .Values.ollama.terminationGracePeriodSeconds }}
+      containers:
+      - name: ollama
+        image: {{ .Values.ollama.image.repository }}:{{ .Values.ollama.image.tag }}
+        imagePullPolicy: {{ .Values.ollama.image.pullPolicy }}
+        ports:
+        - containerPort: 11434
+          name: http
+        resources:
+          {{- toYaml .Values.ollama.resources | nindent 10 }}
+        volumeMounts:
+        - name: ollama-storage
+          mountPath: /root/.ollama
+        env:
+        - name: OLLAMA_HOST
+          value: {{ .Values.ollama.config.host | quote }}
+        {{- if .Values.ollama.config.numParallel }}
+        - name: OLLAMA_NUM_PARALLEL
+          value: {{ .Values.ollama.config.numParallel | quote }}
+        {{- end }}
+        {{- if .Values.ollama.config.maxLoadedModels }}
+        - name: OLLAMA_MAX_LOADED_MODELS
+          value: {{ .Values.ollama.config.maxLoadedModels | quote }}
+        {{- end }}
+        {{- if .Values.ollama.config.flashAttention }}
+        - name: OLLAMA_FLASH_ATTENTION
+          value: "1"
+        {{- end }}
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 10"]
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 11434
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 11434
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: ollama-storage
+        {{- if .Values.ollama.persistence.enabled }}
+        persistentVolumeClaim:
+          claimName: ollama-pvc
+        {{- else }}
+        emptyDir: {}
+        {{- end }}
+{{- end }}

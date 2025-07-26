@@ -1,0 +1,12 @@
+# metallb-config.yaml
+# This configures MetalLB to use a specific IP address from your local network.
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: default-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  # This tells MetalLB it is allowed to use this specific IP.
+  - 192.168.1.100/32
+
