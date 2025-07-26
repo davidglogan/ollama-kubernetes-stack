@@ -174,3 +174,25 @@ kubectl exec -n ollama-stack deployment/ollama -- \
 ---
 
 **Generated on**: 2025-07-26
+
+## 🔐 Grafana Access (Current Deployment)
+
+### Credentials
+- **URL**: http://192.168.1.102:3000
+- **Username**: `admin`
+- **Password**: `prom-operator`
+
+### Secret Location
+```bash
+# View Grafana secret
+kubectl get secret kube-prom-stack-grafana -n observability -o yaml
+
+# Extract password
+kubectl get secret kube-prom-stack-grafana -n observability -o jsonpath='{.data.admin-password}' | base64 -d && echo
+```
+### Available Dashboards
+- Kubernetes Cluster Monitoring
+- Node Exporter Full
+- Kubernetes Compute Resources
+- Prometheus Statistics
+- (Custom AI monitoring dashboards - coming soon!)
