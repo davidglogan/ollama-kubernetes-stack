@@ -57,3 +57,71 @@ build/
 # Backup files
 *-backup-*
 *.backup
+
+# Prevent script dumps and secret files
+all_scripts.txt
+*scripts*.txt
+*.dump
+*.backup
+tskey-*
+*secret*
+*auth*
+*.key
+roadmap_update_*.md
+
+# Security: Prevent script dumps and secret files
+all_scripts.txt
+*scripts*.txt
+*.dump
+*.backup
+roadmap_update_*.md
+
+# Security: Tailscale and API keys
+tskey-*
+*secret*
+*auth*
+*.key
+*.authkey
+
+# Security: Common secret patterns
+*.env.local
+*.env.production
+*.credentials
+**/secrets/**
+password.txt
+token.txt
+
+# Security: Temporary and backup files
+*.tmp
+*.bak
+*~
+.#*
+
+# Security: Prevent script dumps and secret files
+all_scripts.txt
+*scripts*.txt
+*.dump
+*.backup
+roadmap_update_*.md
+security_cleanup_script.sh
+
+# Security: Tailscale and API keys
+tskey-*
+*secret*
+*auth*
+*.key
+*.authkey
+
+# Security: Common secret patterns
+*.env.local
+*.env.production
+*.credentials
+**/secrets/**
+password.txt
+token.txt
+
+# Security: Temporary and backup files
+*.tmp
+*.bak
+*~
+.#*
