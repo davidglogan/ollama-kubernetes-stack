@@ -127,3 +127,16 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) for deta
 
 **Generated on**: 2025-07-26  
 **Powered by**: Kubernetes • Helm • Ollama • OpenWebUI • Grafana • Tailscale
+
+## 🗺️ Project Roadmap
+
+See our comprehensive [ROADMAP.md](ROADMAP.md) for exciting upcoming features including:
+
+- 🧠 **RAG Integration** - Vector databases and knowledge graphs
+- 🔒 **HTTPS Security** - SSL certificates and advanced authentication  
+- 📊 **Advanced Monitoring** - AI-powered observability and analytics
+- 🌐 **Multi-Cloud** - Edge computing and global deployment
+- 🤖 **Multi-Model AI** - Integration with OpenAI, Claude, Gemini
+- 📈 **Business Intelligence** - Usage analytics and cost optimization
+
+*Join us in building the future of AI infrastructure!*
