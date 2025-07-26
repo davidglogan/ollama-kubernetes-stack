@@ -1,0 +1,114 @@
+# Example Configuration for Ollama Kubernetes Stack
+# Copy this file to values-local.yaml and customize for your environment
+
+global:
+  namespace: ollama-stack
+
+# Infrastructure Configuration
+infrastructure:
+  storage:
+    customClass:
+      enabled: true
+      name: "custom-storage"
+      path: "/mnt/storage/microk8s-storage"
+      reclaimPolicy: "Retain"
+      setAsDefault: true
+
+# Networking Configuration
+networking:
+  metallb:
+    enabled: true
+    ipPool:
+      name: "ollama-ip-pool"
+      addresses: "10.0.0.100-10.0.0.110"  # Change to your network range
+  services:
+    openwebui:
+      ip: "10.0.0.101"  # Change to your desired IP
+      port: 8080
+    grafana:
+      ip: "10.0.0.102"  # Change to your desired IP
+      port: 3000
+
+# Ollama Configuration
+ollama:
+  enabled: true
+  image:
+    repository: ollama/ollama
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  resources:
+    requests:
+      memory: "16Gi"
+      cpu: "4000m"
+    limits:
+      memory: "64Gi"
+      cpu: "20000m"
+  
+  persistence:
+    enabled: true
+    size: 1Ti
+    storageClass: "custom-storage"  # Match your storage class name
+  
+  config:
+    host: "0.0.0.0"
+    numParallel: 4
+    maxLoadedModels: 2
+    flashAttention: true
+  
+  terminationGracePeriodSeconds: 60
+
+# OpenWebUI Configuration
+openwebui:
+  enabled: true
+  image:
+    repository: ghcr.io/open-webui/open-webui
+    tag: main
+    pullPolicy: IfNotPresent
+  
+  auth:
+    enabled: true  # Set to false if you don't want authentication
+  
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "4Gi"
+      cpu: "2000m"
+  
+  persistence:
+    enabled: true
+    size: 50Gi
+    storageClass: "custom-storage"  # Match your storage class name
+
+# Monitoring Configuration
+monitoring:
+  grafana:
+    externalAccess:
+      enabled: true
+      namespace: "observability"
+      serviceName: "grafana-external"
+    selector:
+      labels:
+        app.kubernetes.io/name: grafana
+        app.kubernetes.io/instance: kube-prom-stack
+  
+  prometheus:
+    serviceMonitor:
+      enabled: true
+      endpoints:
+        - port: "http"
+          interval: "30s"
+          path: "/metrics"
+
+# Development/Debug Settings
+debug:
+  enabled: false
+  verbose: false
+
+# System-specific configuration - CUSTOMIZE FOR YOUR ENVIRONMENT
+# Hardware: Your CPU Model, Your RAM Amount
+# Storage: Your storage size mounted at your mount path
+# Network: Your network range with MetalLB range
+# Project Directory: Your project path

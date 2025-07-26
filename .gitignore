@@ -125,3 +125,45 @@ token.txt
 *.bak
 *~
 .#*
+
+# Security: Prevent accidental secret exposure
+*secret*
+*auth*
+*.key
+*.authkey
+**/secrets/**
+password.txt
+token.txt
+tskey-*
+tailscale-*.yaml
+
+# Local configuration files (contain personal data)
+values-local.yaml
+*-local.yaml
+local-values.yaml
+override.yaml
+personal-*.yaml
+
+# Environment files
+.env
+.env.local
+.env.production
+*.credentials
+
+# Backup and temporary files
+*.tmp
+*.bak
+*~
+.#*
+*-backup-*
+*.backup
+
+# IDE and editor files
+.vscode/settings.json
+.idea/workspace.xml
+*.swp
+*.swo
+
+# Health check scripts with personal IPs
+scripts/health-check-local.sh
+scripts/*-local.sh
