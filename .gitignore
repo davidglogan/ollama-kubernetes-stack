@@ -171,3 +171,7 @@ scripts/*-local.sh
 # Backup configuration (contains personal paths)
 backup-config-local.sh
 **/backup-config-local.sh
+
+# Local configuration files with personal data
+values-local.yaml
+**/values-local.yaml
