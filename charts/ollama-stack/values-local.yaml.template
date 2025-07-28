@@ -1,0 +1,68 @@
+# Local Development Configuration Template
+# Copy this file to values-local.yaml and customize for your environment
+# The values-local.yaml file is ignored by Git for security
+
+global:
+  namespace: ollama-stack
+
+# CUSTOMIZE THESE VALUES FOR YOUR ENVIRONMENT
+infrastructure:
+  storage:
+    customClass:
+      enabled: true
+      name: "your-storage-class"        # e.g., "ssd-storage", "nvme-storage"
+      path: "/your/storage/path"        # e.g., "/mnt/storage/microk8s"
+      reclaimPolicy: "Retain"
+      setAsDefault: true
+
+networking:
+  metallb:
+    enabled: true
+    ipPool:
+      name: "ollama-ip-pool"
+      addresses: "192.168.X.100-192.168.X.110"  # Your network range
+  services:
+    openwebui:
+      ip: "192.168.X.101"              # Your OpenWebUI IP
+      port: 8080
+    grafana:
+      ip: "192.168.X.102"              # Your Grafana IP
+      port: 3000
+
+# Customize resource limits based on your hardware
+ollama:
+  enabled: true
+  resources:
+    requests:
+      memory: "32Gi"    # Adjust for your system
+      cpu: "2000m"     # Adjust for your system
+    limits:
+      memory: "48Gi"   # Adjust for your system
+      cpu: "10000m"    # Adjust for your system
+  
+  persistence:
+    enabled: true
+    size: 1Ti          # Adjust for your storage
+    storageClass: "evo4t-storage"  # Match your storage class name
+
+openwebui:
+  enabled: true
+  auth:
+    enabled: true      # Set to false if you don't want authentication
+  
+  persistence:
+    enabled: true
+    size: 50Gi
+    storageClass: "evo4t-storage"  # Match your storage class name
+
+# Enable/disable monitoring based on your needs
+monitoring:
+  grafana:
+    externalAccess:
+      enabled: true
+      namespace: "observability"
+
+# Development settings
+debug:
+  enabled: true        # Enable for development
+  verbose: false

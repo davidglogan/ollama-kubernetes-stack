@@ -167,3 +167,7 @@ personal-*.yaml
 # Health check scripts with personal IPs
 scripts/health-check-local.sh
 scripts/*-local.sh
+
+# Backup configuration (contains personal paths)
+backup-config-local.sh
+**/backup-config-local.sh

@@ -2,6 +2,7 @@
 # Ollama Stack Health Check Script
 # Tests all endpoints and provides comprehensive status reporting
 # GitHub Version - No hardcoded personal information
+# FIXED: Uses Grafana health API to avoid login redirects
 
 set -euo pipefail
 
@@ -231,8 +232,9 @@ check_endpoints() {
         print_status "WARN" "Grafana URL not configured. Use --auto-detect or set GRAFANA_URL" "$WARNING"
         all_endpoints_ok=false
     else
-        # Test Grafana
-        if ! test_endpoint "Grafana" "$GRAFANA_URL" "200" "$MONITOR"; then
+        # FIXED: Test Grafana using health API endpoint to avoid login redirect
+        local grafana_health_url="${GRAFANA_URL%/}/api/health"
+        if ! test_endpoint "Grafana Health API" "$grafana_health_url" "200" "$MONITOR"; then
             all_endpoints_ok=false
         fi
     fi
