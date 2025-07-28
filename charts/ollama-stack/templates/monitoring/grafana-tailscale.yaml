@@ -1,0 +1,22 @@
+{{- if .Values.monitoring.grafana.tailscale.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-tailscale
+  namespace: {{ .Values.monitoring.grafana.externalAccess.namespace }}
+  annotations:
+    tailscale.com/expose: "true"
+    tailscale.com/hostname: {{ .Values.monitoring.grafana.tailscale.hostname }}
+  labels:
+    {{- include "ollama-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/name: grafana-tailscale
+spec:
+  type: ClusterIP
+  selector:
+    {{- toYaml .Values.monitoring.grafana.selector.labels | nindent 4 }}
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+      name: http
+{{- end }}

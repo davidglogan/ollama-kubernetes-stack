@@ -61,6 +61,9 @@ monitoring:
     externalAccess:
       enabled: true
       namespace: "observability"
+    tailscale:
+      enabled: true                     # Set to false if you don't want Tailscale access
+      hostname: "your-grafana-hostname" # Customize your Tailscale hostname
 
 # Development settings
 debug:

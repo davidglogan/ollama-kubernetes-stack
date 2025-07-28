@@ -87,6 +87,9 @@ monitoring:
       enabled: true
       namespace: "observability"
       serviceName: "grafana-external"
+    tailscale:
+      enabled: true
+      hostname: "grafana-ollama"
     selector:
       labels:
         app.kubernetes.io/name: grafana

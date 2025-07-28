@@ -71,7 +71,8 @@ helm lint charts/ollama-stack
 helm template test charts/ollama-stack --dry-run
 ./scripts/install.sh
 curl -s http://192.168.1.101:8080  # Verify OpenWebUI
-curl -s http://192.168.1.102:3000  # Verify Grafana
+curl -s http://192.168.1.102:3000  # Verify Grafana (MetalLB)
+curl -s http://grafana-ollama.tailnet.ts.net:3000  # Verify Grafana (Tailscale)
 ```
 
 ## Architecture Overview
@@ -106,8 +107,8 @@ The main chart (`charts/ollama-stack/`) deploys:
 
 ### Network Architecture
 - **OpenWebUI**: http://192.168.1.101:8080 (MetalLB LoadBalancer)
-- **Grafana**: http://192.168.1.102:3000 (MetalLB LoadBalancer)
-- **Tailscale**: http://100.102.114.95:8080 (Secure remote access)
+- **Grafana**: http://192.168.1.102:3000 (MetalLB LoadBalancer) + http://grafana-ollama.tailnet.ts.net:3000 (Tailscale)
+- **Tailscale**: http://100.102.114.95:8080 (Secure remote access for OpenWebUI)
 - **IP Pool**: 192.168.1.100-192.168.1.110 (MetalLB range)
 
 ## Development Guidelines
@@ -144,6 +145,7 @@ This project uses feature branch workflow with semantic commit messages:
 - If services are unreachable, check MetalLB IP assignments: `kubectl get services -n ollama-stack`
 - If pods won't start, check storage availability: `df -h /mnt/evo4t`
 - For Tailscale issues, verify connection: `tailscale status`
+- Check Tailscale services: `kubectl get services -n observability | grep tailscale`
 
 ### Log Locations
 - Ollama logs: `kubectl logs -n ollama-stack -l app=ollama`

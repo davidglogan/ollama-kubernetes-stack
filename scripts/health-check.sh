@@ -232,10 +232,19 @@ check_endpoints() {
         print_status "WARN" "Grafana URL not configured. Use --auto-detect or set GRAFANA_URL" "$WARNING"
         all_endpoints_ok=false
     else
-        # FIXED: Test Grafana using health API endpoint to avoid login redirect
+        # Test Grafana MetalLB endpoint using health API to avoid login redirect
         local grafana_health_url="${GRAFANA_URL%/}/api/health"
-        if ! test_endpoint "Grafana Health API" "$grafana_health_url" "200" "$MONITOR"; then
+        if ! test_endpoint "Grafana Health API (MetalLB)" "$grafana_health_url" "200" "$MONITOR"; then
             all_endpoints_ok=false
+        fi
+        
+        # Test Grafana Tailscale endpoint if available
+        local grafana_tailscale_url="http://grafana-ollama.$(tailscale status --json 2>/dev/null | grep -o '"TailnetName":"[^"]*"' | cut -d'"' -f4 || echo 'tailnet').ts.net:3000"
+        if command -v tailscale >/dev/null 2>&1 && tailscale status >/dev/null 2>&1; then
+            local grafana_tailscale_health_url="${grafana_tailscale_url%/}/api/health"
+            if ! test_endpoint "Grafana Health API (Tailscale)" "$grafana_tailscale_health_url" "200" "$SECURE"; then
+                print_status "WARN" "Grafana Tailscale endpoint not responding" "$WARNING"
+            fi
         fi
     fi
     
