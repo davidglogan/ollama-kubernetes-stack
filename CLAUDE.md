@@ -157,6 +157,54 @@ This project uses feature branch workflow with semantic commit messages:
 - Storage issues: Check `/mnt/evo4t` mount and permissions
 - Network issues: Verify MetalLB configuration and IP pool availability
 
+### Tailscale Operator Troubleshooting
+
+If the Tailscale operator is in CrashLoopBackOff, follow these steps:
+
+**1. Check operator logs:**
+```bash
+kubectl logs -n tailscale deployment/operator --tail=20
+```
+
+**2. Common issues and solutions:**
+
+**Missing OAuth credentials:**
+```bash
+# Check if OAuth credentials exist
+kubectl get secret operator-oauth -n tailscale -o jsonpath='{.data}'
+
+# If empty, create OAuth app at https://login.tailscale.com/admin/settings/oauth
+# Required scopes: devices:write, routes:write, dns:write, auth_keys:write, users:read
+# Then update credentials:
+kubectl create secret generic operator-oauth -n tailscale \
+  --from-literal=client_id="YOUR_CLIENT_ID" \
+  --from-literal=client_secret="YOUR_TOKEN" \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+**Tag permission errors:**
+```bash
+# Check current tags in deployment
+kubectl get deployment operator -n tailscale -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="OPERATOR_INITIAL_TAGS")].value}'
+
+# Update to match your OAuth app tags (replace 'your-tag' with actual tag)
+kubectl patch deployment operator -n tailscale -p '{"spec":{"template":{"spec":{"containers":[{"name":"operator","env":[{"name":"OPERATOR_INITIAL_TAGS","value":"tag:your-tag"},{"name":"PROXY_TAGS","value":"tag:your-tag"}]}]}}}}'
+```
+
+**3. Restart operator after fixes:**
+```bash
+kubectl rollout restart deployment/operator -n tailscale
+```
+
+**4. Verify Tailscale services are working:**
+```bash
+# Check proxy pods are created
+kubectl get pods -n tailscale
+
+# Verify service has Tailscale proxy ready
+kubectl get service grafana-tailscale -n observability -o jsonpath='{.status.conditions[?(@.type=="TailscaleProxyReady")].status}'
+```
+
 ## AI Models and Usage
 
 ### Included Models
