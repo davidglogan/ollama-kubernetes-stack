@@ -1,4 +1,4 @@
-{{- if .Values.openwebui.tailscale.enabled }}
+{{- if and .Values.openwebui.tailscale .Values.openwebui.tailscale.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
