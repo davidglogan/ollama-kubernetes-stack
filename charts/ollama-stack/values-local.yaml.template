@@ -54,6 +54,10 @@ openwebui:
     enabled: true
     size: 50Gi
     storageClass: "evo4t-storage"  # Match your storage class name
+  
+  tailscale:
+    enabled: true                           # Set to false if you don't want Tailscale access
+    hostname: "your-openwebui-hostname"     # Customize your Tailscale hostname
 
 # Enable/disable monitoring based on your needs
 monitoring:

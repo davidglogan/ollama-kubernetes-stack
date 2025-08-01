@@ -1,0 +1,23 @@
+{{- if .Values.openwebui.tailscale.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ollama-stack.fullname" . }}-openwebui-tailscale
+  namespace: {{ .Values.global.namespace }}
+  annotations:
+    tailscale.com/expose: "true"
+    tailscale.com/hostname: {{ .Values.openwebui.tailscale.hostname | quote }}
+  labels:
+    {{- include "ollama-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: openwebui-tailscale
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    {{- include "ollama-stack.selectorLabels" . | nindent 4 }}
+    app: open-webui
+{{- end }}

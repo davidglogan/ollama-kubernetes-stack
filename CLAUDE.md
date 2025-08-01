@@ -95,8 +95,9 @@ curl -s http://grafana-ollama.tailnet.ts.net:3000  # Verify Grafana (Tailscale)
 ### Helm Chart Architecture
 The main chart (`charts/ollama-stack/`) deploys:
 - **Ollama Pod**: AI model inference server with persistent storage
-- **OpenWebUI Pod**: Web interface for AI interactions
+- **OpenWebUI Pod**: Web interface for AI interactions with Tailscale remote access
 - **Grafana External Service**: Monitoring dashboard access via LoadBalancer
+- **Tailscale Services**: Secure remote access for OpenWebUI and Grafana
 - **Storage Classes**: Custom storage configuration for `/mnt/evo4t`
 - **MetalLB Configuration**: LoadBalancer services for external access
 
@@ -106,10 +107,12 @@ The main chart (`charts/ollama-stack/`) deploys:
 - `charts/ollama-stack/Chart.yaml`: Chart version 2.0.0, appVersion latest
 
 ### Network Architecture
-- **OpenWebUI**: http://192.168.1.101:8080 (MetalLB LoadBalancer)
-- **Grafana**: http://192.168.1.102:3000 (MetalLB LoadBalancer) + http://grafana-ollama.tailnet.ts.net:3000 (Tailscale)
-- **Tailscale**: http://100.102.114.95:8080 (Secure remote access for OpenWebUI)
+- **OpenWebUI Local**: http://192.168.1.101:8080 (MetalLB LoadBalancer)
+- **OpenWebUI Remote**: http://openwebui-ollama:8080 (Tailscale secure access)
+- **Grafana Local**: http://192.168.1.102:3000 (MetalLB LoadBalancer) 
+- **Grafana Remote**: http://grafana-ollama:3000 (Tailscale secure access)
 - **IP Pool**: 192.168.1.100-192.168.1.110 (MetalLB range)
+- **Tailscale**: Dedicated proxy services with unique IPs for remote access
 
 ## Development Guidelines
 
